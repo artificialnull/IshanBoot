@@ -186,14 +186,9 @@ while True:
                                 if alias not in locked or name == "@pieman2201":
                                     if len(value) < max_value:
                                         aliases[alias] = value
-                                        if "term>" not in alias and "term>" not in value:
-                                            print("alias " + alias + "=" + value + " by " + name)
-                                            saveAliases(aliases)
-                                            sendMessage("Aliased " + alias + " to " + value, message_id)
-                                        else:
-                                            banned[name] = time.time() + 300
-                                            sendMessage("Banned " + name + " for 5m (reason: hacks)")
-                                            print("banned " + name)
+                                        print("alias " + alias + "=" + value + " by " + name)
+                                        saveAliases(aliases)
+                                        sendMessage("Aliased " + alias + " to " + value, message_id)
                                     else:
                                         print("value too big")
                                         sendMessage("Value is too big (" + str(max_value) + " chars)",
