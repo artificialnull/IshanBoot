@@ -5,6 +5,7 @@ import json
 import os
 import time
 import random
+
 #telegram bot stuff
 url = "https://api.telegram.org/bot%s/%s"
 token = "insert token here"
@@ -82,22 +83,14 @@ def loadAliases():
     aliases = {}
     keys = []
     aliasFile = open(path + "/aliases.txt").read()
-    for term in aliasFile.split("</term>\n"):
-        term = term.replace("<term>","")
-        alias = term.split("=")[0]
-        value = "=".join(term.split("=")[1:])
-        if alias != "" and value != "":
-            aliases[alias] = value
-            keys.append(alias)
+    aliases = json.loads(aliasFile)
+    keys = list(aliases.keys())
     return aliases, keys
 
 def saveAliases(aliases):
     #puts an aliases dict into a savefile
     aliasFile = open(path + "/aliases.txt", "w")
-    aliasStr = ""
-    for alias in aliases.keys():
-        aliasStr += "<term>" + alias + "=" + aliases[alias] + "</term>\n"
-    aliasFile.write(aliasStr)
+    aliasFile.write(json.dumps(aliases))
     aliasFile.close()
 
 aliases, aliasList = loadAliases() #load aliases on start
@@ -193,14 +186,9 @@ while True:
                                 if alias not in locked or name == "@pieman2201":
                                     if len(value) < max_value:
                                         aliases[alias] = value
-                                        if "term>" not in alias and "term>" not in value:
-                                            print("alias " + alias + "=" + value + " by " + name)
-                                            saveAliases(aliases)
-                                            sendMessage("Aliased " + alias + " to " + value, message_id)
-                                        else:
-                                            banned[name] = time.time() + 300
-                                            sendMessage("Banned " + name + " for 5m (reason: hacks)")
-                                            print("banned " + name)
+                                        print("alias " + alias + "=" + value + " by " + name)
+                                        saveAliases(aliases)
+                                        sendMessage("Aliased " + alias + " to " + value, message_id)
                                     else:
                                         print("value too big")
                                         sendMessage("Value is too big (" + str(max_value) + " chars)",
