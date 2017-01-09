@@ -5,6 +5,7 @@ import json
 import os
 import time
 import random
+
 #telegram bot stuff
 url = "https://api.telegram.org/bot%s/%s"
 token = "insert token here"
@@ -82,22 +83,14 @@ def loadAliases():
     aliases = {}
     keys = []
     aliasFile = open(path + "/aliases.txt").read()
-    for term in aliasFile.split("</term>\n"):
-        term = term.replace("<term>","")
-        alias = term.split("=")[0]
-        value = "=".join(term.split("=")[1:])
-        if alias != "" and value != "":
-            aliases[alias] = value
-            keys.append(alias)
+    aliases = json.loads(aliasFile)
+    keys = list(aliases.keys())
     return aliases, keys
 
 def saveAliases(aliases):
     #puts an aliases dict into a savefile
     aliasFile = open(path + "/aliases.txt", "w")
-    aliasStr = ""
-    for alias in aliases.keys():
-        aliasStr += "<term>" + alias + "=" + aliases[alias] + "</term>\n"
-    aliasFile.write(aliasStr)
+    aliasFile.write(json.dumps(aliases))
     aliasFile.close()
 
 aliases, aliasList = loadAliases() #load aliases on start
