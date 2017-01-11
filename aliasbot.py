@@ -8,7 +8,8 @@ import random
 
 #telegram bot stuff
 url = "https://api.telegram.org/bot%s/%s"
-token = "insert token here"
+token = open("token.txt").read().replace('\n', '')
+print(url % (token, "getUpdates"))
 
 #parameters
 chat_id = ""
