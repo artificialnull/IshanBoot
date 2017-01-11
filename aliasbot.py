@@ -101,6 +101,8 @@ stime = 0
 locked = []
 users = {}
 banned = {}
+SCH_CHID = -1001032618176
+LOG_CHID = -1001098108881
 
 def logMessage(message):
     baseLM = "user: %s ; mesg: %s ; chid: %s\n"
@@ -110,6 +112,18 @@ def logMessage(message):
     logfile = open(path + "/logfile.txt", "a")
     logfile.write(filledLM)
     logfile.close()
+    if message['chat']['id'] == SCH_CHID:
+        payload = {
+                'chat_id': LOG_CHID,
+                'from_chat_id': SCH_CHID,
+                'disable_notification': True,
+                'message_id': message['message_id']
+                }
+        try:
+            tresponse = requests.post(url % (token, "forwardMessage"),
+                    data=payload, timeout=2)
+        except:
+            return
 
 while True:
     try:
@@ -134,18 +148,10 @@ while True:
         for name in toUnban:
             del banned[name]
 
-        #do a dumb smart sleep thingo
-        if len(r) == 0 and not err:
-            if stime < 5:
-                stime += 0.25
-                print("\rinterval incremented: " + str(stime) + "   ", end="")
-        elif err:
-            stime = 2.5
-        else:
-            if stime != 0:
-                print("\ninterval reset                 ")
-                stime = 0
+        if len(r) != 0 and not err:
             print("received updates")
+        else:
+            time.sleep(0.1)
 
         for update in r:
             #loop through each update
@@ -165,6 +171,17 @@ while True:
                         name = "@" + user['username']
                     else:
                         name = user['first_name']
+                    uid = user['id']
+                    if chat_id == LOG_CHID:
+                        try:
+                            payload = {
+                                    'chat_id': LOG_CHID,
+                                    'user_id': uid
+                                    }
+                            tresponse = requests.post(url % (token, "kickChatMember"),
+                                    data=payload, timeout=2)
+                        except:
+                            pass
                     if name in banned.keys() and name != "@pieman2201":
                         continue
                 if "text" in message.keys():
@@ -314,7 +331,9 @@ while True:
                             print("banned " + name)
 
         #sleep for the determined amount of time
-        time.sleep(stime)
+        #if we're logging messages from schmetterling now, then
+        #we can't afford to sleep for any amount of time
+        #h4x0rz=nocturnal
 
     except ConnectionError:
         print("ConnectionError") #should put stuff here but whatever
