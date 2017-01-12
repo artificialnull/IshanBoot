@@ -106,12 +106,15 @@ LOG_CHID = -1001098108881
 
 def logMessage(message):
     baseLM = "user: %s ; mesg: %s ; chid: %s\n"
-    filledLM = baseLM % (message['from']['first_name'],
-            message['text'],
-            message['chat']['id'])
-    logfile = open(path + "/logfile.txt", "a")
-    logfile.write(filledLM)
-    logfile.close()
+    try:
+        filledLM = baseLM % (message['from']['first_name'],
+                message['text'],
+                message['chat']['id'])
+        logfile = open(path + "/logfile.txt", "a")
+        logfile.write(filledLM)
+        logfile.close()
+    except:
+        pass
     if message['chat']['id'] == SCH_CHID:
         payload = {
                 'chat_id': LOG_CHID,
