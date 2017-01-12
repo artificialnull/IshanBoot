@@ -106,15 +106,13 @@ LOG_CHID = -1001098108881
 
 def logMessage(message):
     baseLM = "user: %s ; mesg: %s ; chid: %s\n"
-    try:
+    if 'text' in message.keys():
         filledLM = baseLM % (message['from']['first_name'],
                 message['text'],
                 message['chat']['id'])
         logfile = open(path + "/logfile.txt", "a")
         logfile.write(filledLM)
         logfile.close()
-    except:
-        pass
     if message['chat']['id'] == SCH_CHID:
         payload = {
                 'chat_id': LOG_CHID,
@@ -153,8 +151,8 @@ while True:
 
         if len(r) != 0 and not err:
             print("received updates")
-        else:
-            time.sleep(0.1)
+        elif err:
+            time.sleep(1)
 
         for update in r:
             #loop through each update
