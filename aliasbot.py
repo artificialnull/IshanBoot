@@ -136,7 +136,7 @@ def alias(content, uid):
         sendMessage("Alias must be a single term", message_id)
 
 
-def unalias(content):
+def unalias(content, uid):
     alias = content
     if alias not in locked:
         if len(alias.split()) == 1 and alias in aliases.keys():
