@@ -4,105 +4,97 @@ import requests
 import json
 import os
 import time
-import random
+import random as rand
+import subprocess
 
 #telegram bot stuff
 url = "https://api.telegram.org/bot%s/%s"
 token = open("token.txt").read().replace('\n', '')
 print(url % (token, "getUpdates"))
-
-#parameters
-chat_id = ""
-max_value = 1024
 path = os.path.dirname(__file__)
+
+#globals
+locked = []
+aliases = {}
+commands = {}
+chat_id = 0
+SCH_CHID = -1001032618176
+LOG_CHID = -1001098108881
 
 #requests stuff
 ConnectionError = requests.exceptions.ConnectionError
 
-def getUpdates(offset):
-    #gets all updates starting with offset
-    try:
-        r = requests.get(url % (token, "getUpdates"), data={"offset": offset}, timeout=2)
-    except:
-        print("Error while getting updates")
-        return [], offset, True
-    try:
-        r = json.loads(r.text)
-    except:
-        return [], offset, True
-    r = r["result"]
-    if len(r) > 0:
-        offset = int(r[-1]['update_id']) + 1
-    return r, offset, False
-
-start = time.time()
-latestOffset = 1
-#update current offset to show the latest messages because telegram is dumb
-print("Updating...", end="")
-oldLatestOffset = 0
-while oldLatestOffset < latestOffset:
-    oldLatestOffset = latestOffset
-    DRAIN, latestOffset, err = getUpdates(latestOffset)
-print("\rUpdated    ")
-
-def sendMessage(message, reply_to_message_id=False, tries=0):
-    #send message to current chat with content message
-    if tries > 3:
+def isCommand(text, command):
+    if text[:len(command)] != command:
+        return False
+    else:
         return True
+
+def stripCommand(text, command):
+    return text[len(command) + 1:]
+
+def getUpdates():
+    try:
+        r = requests.get(url % (token, "getUpdates"), data={"offset": getUpdates.offset}, timeout=2)
+        try:
+            r = json.loads(r.text)
+        except:
+            print("Loading error while getting updates")
+            return [], True
+        r = r['result']
+        if len(r) > 0:
+            getUpdates.offset = int(r[-1]['update_id']) + 1
+    except ConnectionError:
+        print("Connection error while getting updates")
+        return [], True
+    return r, False
+getUpdates.offset = 0
+
+def sendMessage(message, reply_id=False, markdown=True):
     payload = {
         "chat_id": chat_id,
         "text": message,
         "parse_mode": "Markdown",
         "disable_web_page_preview": True
     }
-    if tries > 0:
-        #don't parse if we failed the send before
-        del payload["parse_mode"]
-    if reply_to_message_id:
-        #do a reply if specified
-        payload['reply_to_message_id'] = reply_to_message_id
-        del payload["parse_mode"]
+    if reply_id:
+        payload['reply_to_message_id'] = reply_id
+    if not markdown:
+        del payload['parse_mode']
     try:
         tresponse = requests.post(url % (token, "sendMessage"), data=payload, timeout=2)
-    except:
-        #handle a timeout by trying again with all the same params
-        print("Error while sending message (tries: %s)" % str(tries + 1))
-        time.sleep(0.5)
-        sendMessage(message, reply_to_message_id, tries + 1)
-        return True
-    try:
         resp = json.loads(tresponse.text)
+        if not resp["ok"]:
+            return sendMessage(message, reply_id, False)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
     except:
+        print("Connection error while sending message")
         return True
-    if not resp["ok"] and tries < 3:
-        #something probably went wrong with the parsing, let's try again
-        sendMessage(message, reply_to_message_id, tries + 1)
     return False
 
 def loadAliases():
-    #puts saved aliases into an aliases dict
     aliases = {}
-    keys = []
     aliasFile = open(path + "/aliases.txt").read()
     aliases = json.loads(aliasFile)
-    keys = list(aliases.keys())
-    return aliases, keys
+    return aliases
 
-def saveAliases(aliases):
-    #puts an aliases dict into a savefile
+def saveAliases():
     aliasFile = open(path + "/aliases.txt", "w")
-    aliasFile.write(json.dumps(aliases))
+    aliasFile.write(json.dumps(aliases, indent=4))
     aliasFile.close()
 
-aliases, aliasList = loadAliases() #load aliases on start
-print("Started")
+def loadLocked():
+    locked = []
+    lfile = open(path + "/locked.txt").read()
+    for line in lfile.split('\n'):
+        if line != '':
+            locked.append(line)
+    return locked
 
-stime = 0
-locked = []
-users = {}
-banned = {}
-SCH_CHID = -1001032618176
-LOG_CHID = -1001098108881
+aliases = loadAliases()
+locked = loadLocked()
+print("Started")
 
 def logMessage(message):
     baseLM = "user: %s ; mesg: %s ; chid: %s\n"
@@ -126,28 +118,68 @@ def logMessage(message):
         except:
             return
 
-while True:
+def alias(content, uid):
+    alias = content.split('=')[0]
+    alias = alias.replace(' ', '_')
+    value = '='.join(content.split('=')[1:])
+    if len(alias.split()) == 1:
+        if alias not in locked or uid == 204403520:
+            aliases[alias] = value
+            print("alias " + alias + "=" + value + " by " + name)
+            saveAliases()
+            sendMessage("Aliased " + alias + " to " + value, message_id)
+        else:
+            print("cannot unlock alias")
+            sendMessage("Alias is locked, sorry", message_id)
+    else:
+        print("alias malformed")
+        sendMessage("Alias must be a single term", message_id)
+
+
+def unalias(content):
+    alias = content
+    if alias not in locked:
+        if len(alias.split()) == 1 and alias in aliases.keys():
+            aliases[alias] = ''
+            print("del " + alias)
+            saveAliases()
+            sendMessage("Unaliased " + alias, message_id)
+        else:
+            print("unalias malformed")
+            sendMessage("Invalid alias", message_id)
+    else:
+        print("cannot unlock alias")
+        sendMessage("Alias is locked, sorry", message_id)
+
+
+def random(content, uid):
+    randomAlias = rand.choice(list(aliases.keys()))
+    randomAliasStr = "/%s = %s" % (randomAlias, aliases[randomAlias])
+    print(randomAliasStr)
+    sendMessage(randomAliasStr)
+
+
+def time(content, uid):
+    sendMessage('`' + subprocess.Popen('uptime', stdout=subprocess.PIPE).communicate()[0].decode("utf-8") + '`')
+
+
+commands = {
+        '/alias':    alias,
+        '/unalias':  unalias,
+        '/random':   random,
+        '/time':     time
+        }
+
+if __name__ == "__main__":
+    loffset = getUpdates.offset - 1
+    while getUpdates.offset != loffset:
+        loffset = getUpdates.offset
+        getUpdates()
+    print("Updated to:", getUpdates.offset)
+
+while __name__ == "__main__":
     try:
-        #reload locked aliases on every cycle
-        locked = []
-        lfile = open(path + "/locked.txt").read()
-        for line in lfile.split('\n'):
-            if line != '':
-                locked.append(line)
-
-        #get updates and the newest offset
-        r, latestOffset, err = getUpdates(latestOffset)
-
-        #handle spam detection and unbanning
-        if int(time.time()) % 6 == 0:
-            users = {}
-        toUnban = []
-        for name in banned.keys():
-            if time.time() > banned[name]:
-                print("unbanned " + name)
-                toUnban.append(name)
-        for name in toUnban:
-            del banned[name]
+        r, err = getUpdates()
 
         if len(r) != 0 and not err:
             print("received updates")
@@ -155,186 +187,59 @@ while True:
             time.sleep(1)
 
         for update in r:
-            #loop through each update
-            if "message" in update.keys():
-                message = update['message']
+            message = update.get('message')
+            if message == None:
+                continue
+            logMessage(message)
+            message_id = message['message_id']
+            chat = message['chat']
+            chat_id = chat['id']
+            user = message.get('from')
+            name = "@" + user.get('username')
+            if name == None:
+                name = user.get('first_name')
+            uid = user['id']
+            if chat_id == LOG_CHID:
                 try:
-                    logMessage(message)
-                except:
+                    payload = {
+                            'chat_id': LOG_CHID,
+                            'user_id': uid
+                            }
+                    requests.post(url % (token, "kickChatMember"), data=payload, timeout=2)
+                    continue
+                except ConnectionError:
                     pass
-                message_id = message['message_id']
-                chat = message['chat']
-                chat_id = chat['id']
-                if "from" in message.keys():
-                    #find and store name of user
-                    user = message['from']
-                    if "username" in user.keys():
-                        name = "@" + user['username']
-                    else:
-                        name = user['first_name']
-                    uid = user['id']
-                    if chat_id == LOG_CHID:
-                        try:
-                            payload = {
-                                    'chat_id': LOG_CHID,
-                                    'user_id': uid
-                                    }
-                            tresponse = requests.post(url % (token, "kickChatMember"),
-                                    data=payload, timeout=2)
-                        except:
-                            pass
-                    if name in banned.keys() and name != "@pieman2201":
-                        continue
-                if "text" in message.keys():
-                    #get the text of the message
-                    text = message['text']
-                    if "/alias" == text[:6]:
-                        #add to the user's count
-                        if name in users.keys():
-                            users[name] += 1
+            text = message.get('text', ' ')
+
+            if "/" in text:
+                found = False
+                for command in commands.keys():
+                    if isCommand(text, command):
+                        content = stripCommand(text, command)
+                        found = True
+                        commands[command](content, uid)
+                if found:
+                    continue
+                terms = text.split()
+                response = ''
+                for term in terms:
+                    if '/' == term[0]:
+                        alias = ''
+                        if '@' in term and term[1:].split('@')[-1] == "IshanBot":
+                            alias = term[1:].split('@')[0]
                         else:
-                            users[name] = 1
+                            alias = term[1:]
+                        response += aliases.get(alias, '')
+                if response != '':
+                    sendMessage(response + ' ' + name)
 
-                        #check if the message is an /alias command and parse
-                        content = text[7:]
-                        try:
-                            alias = content.split("=")[0]
-                            alias = alias.replace(" ", "")
-                            value = "=".join(content.split("=")[1:])
-                            if len(alias.split()) == 1:
-                                if alias not in locked or name == "@pieman2201":
-                                    if len(value) < max_value:
-                                        aliases[alias] = value
-                                        print("alias " + alias + "=" + value + " by " + name)
-                                        saveAliases(aliases)
-                                        sendMessage("Aliased " + alias + " to " + value, message_id)
-                                    else:
-                                        print("value too big")
-                                        sendMessage("Value is too big (" + str(max_value) + " chars)",
-                                                message_id)
-                                else:
-                                    print("cannot unlock alias")
-                                    sendMessage("Alias is locked, sorry", message_id)
-                            else:
-                                print("alias malformed")
-                                sendMessage("Alias must be a single term", message_id)
-                        except:
-                            pass
-
-                    elif "/unalias" == text[:8]:
-                        #add to the user's count
-                        if name in users.keys():
-                            users[name] += 1
-                        else:
-                            users[name] = 1
-
-                        #check if the message is an /unalias command and parse
-                        content = text[9:]
-                        try:
-                            alias = content
-                            if alias not in locked:
-                                if len(alias.split()) == 1:
-                                    if alias in aliases.keys():
-                                        del aliases[alias]
-                                    print("del " + alias)
-                                    saveAliases(aliases)
-                                    sendMessage("Unaliased " + alias, message_id)
-                                else:
-                                    print("unalias malformed")
-                                    sendMessage("Alias must be a single term", message_id)
-                            else:
-                                print("cannot unlock alias")
-                                sendMessage("Alias is locked, sorry", message_id)
-                        except:
-                            pass
-                    elif "w/elp" == text[:5]:
-                        sendMessage("gg")
-                    elif "/random" == text[:7]:
-                        #add to the user's count
-                        if name in users.keys():
-                            users[name] += 1
-                        else:
-                            users[name] = 1
-
-                        #send a random one
-                        randomAlias = random.choice(aliasList)
-                        randomAliasStr = "/%s = %s" % (randomAlias, aliases[randomAlias])
-                        sendMessage(randomAliasStr)
-
-                    elif "/ban" == text[:4] and name == "@pieman2201":
-                        try:
-                            nameToBan, length = text[5:].split()
-                            banned[nameToBan] = time.time() + int(length)
-                            sendMessage("Banned user (reason: mod request)")
-                        except:
-                            continue
-
-                    elif "/time" == text[:5]:
-                        #add to the user's count (there should really be a func for this)
-                        if name in users.keys():
-                            users[name] += 1
-                        else:
-                            users[name] = 1
-
-                        #send the current time in seconds since the bot started
-                        sendMessage("up for " + str(time.time() - start) + "s")
-
-                    elif "/" in text:
-                        #if there is a different command in the message
-                        terms = text.split()
-                        commands = []
-                        for term in terms:
-                            #find the command in the message
-                            if "/" == term[0]:
-                                if "@" in term:
-                                    alias = term[1:].split("@")[0]
-                                else:
-                                    alias = term[1:]
-                                commands.append(alias)
-                        response = ""
-                        aliasesUsed = 0
-                        for command in commands:
-                            #for each command in the message...
-                            for alias in aliases.keys():
-                                #check to see if the command is an alias...
-                                if alias == command:
-                                    #if it is, add the value to the response
-                                    value = aliases[alias]
-                                    aliasesUsed += 1
-                                    response += value + " "
-                                    print(alias + " -> " + value)
-
-                        if response != "" and len(response) < max_value:
-                            #add to the user's count based on length of message
-                            if aliasesUsed > 1:
-                                if name in users.keys():
-                                    users[name] += int(len(response) / 10)
-                                else:
-                                    users[name] = int(len(response) / 10)
-                            else:
-                                if name in users.keys():
-                                    users[name] += 1
-                                else:
-                                    users[name] = 1
-                            #check if the message is blank. if not...
-                            response += name
-                            sendMessage(response) #send the values
-                    else:
-                        #unrelated message handling because telegram is dumb
-                        pass
-
-                    #handle banning users
-                    for name in users.keys():
-                        if users[name] >= 5:
-                            users[name] = 0
-                            banned[name] = time.time() + 300
-                            sendMessage("Banned " + name + " for 5m (reason: spam)")
-                            print("banned " + name)
-
-        #sleep for the determined amount of time
-        #if we're logging messages from schmetterling now, then
-        #we can't afford to sleep for any amount of time
-        #h4x0rz=nocturnal
-
-    except ConnectionError:
-        print("ConnectionError") #should put stuff here but whatever
+    except KeyboardInterrupt:
+        print("Control menu:\n 0 - Quit\n 1 - Reload locks")
+        choice = int(input("> "))
+        if choice == 1:
+            locked = loadLocked()
+        else:
+            saveAliases()
+            raise SystemExit
+    except BaseException as e:
+        print(str(e))
