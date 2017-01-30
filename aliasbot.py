@@ -163,11 +163,15 @@ def time(content, uid):
     sendMessage('`' + subprocess.Popen('uptime', stdout=subprocess.PIPE).communicate()[0].decode("utf-8") + '`')
 
 
+def welp(content, uid):
+    sendMessage("gg")
+
 commands = {
         '/alias':    alias,
         '/unalias':  unalias,
         '/random':   random,
-        '/time':     time
+        '/time':     time,
+        'w/elp':     welp
         }
 
 if __name__ == "__main__":
