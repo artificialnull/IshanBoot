@@ -120,6 +120,10 @@ def logMessage(message):
 
 def alias(content, uid):
     alias = content.split('=')[0]
+    while alias[0] == ' ':
+        alias = alias[1:]
+    while alias[-1] == ' ':
+        alias = alias[:-1]
     alias = alias.replace(' ', '_')
     value = '='.join(content.split('=')[1:])
     if len(alias.split()) == 1:
@@ -166,12 +170,19 @@ def time(content, uid):
 def welp(content, uid):
     sendMessage("gg")
 
+
+def rip(content, uid):
+    response = rand.choice(["me", "rip is right", "rip is me"])
+    sendMessage(response)
+
+
 commands = {
         '/alias':    alias,
         '/unalias':  unalias,
         '/random':   random,
         '/time':     time,
-        'w/elp':     welp
+        'w/elp':     welp,
+        '/rip':      rip
         }
 
 if __name__ == "__main__":
