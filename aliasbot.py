@@ -163,7 +163,7 @@ def random(content, uid):
     sendMessage(randomAliasStr)
 
 
-def time(content, uid):
+def uptime(content, uid):
     sendMessage('`' + subprocess.Popen('uptime', stdout=subprocess.PIPE).communicate()[0].decode("utf-8") + '`')
 
 
@@ -180,7 +180,7 @@ commands = {
         '/alias':    alias,
         '/unalias':  unalias,
         '/random':   random,
-        '/time':     time,
+        '/time':     uptime,
         'w/elp':     welp,
         '/rip':      rip
         }
