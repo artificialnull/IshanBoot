@@ -7,23 +7,6 @@ import time
 import random as rand
 import subprocess
 
-#telegram bot stuff
-url = "https://api.telegram.org/bot%s/%s"
-token = open("token.txt").read().replace('\n', '')
-print(url % (token, "getUpdates"))
-path = os.path.dirname(__file__)
-
-#globals
-locked = []
-aliases = {}
-commands = {}
-chat_id = 0
-SCH_CHID = -1001032618176
-LOG_CHID = -1001098108881
-
-#requests stuff
-ConnectionError = requests.exceptions.ConnectionError
-
 def isCommand(text, command):
     if text[:len(command)] != command:
         return False
@@ -91,10 +74,6 @@ def loadLocked():
         if line != '':
             locked.append(line)
     return locked
-
-aliases = loadAliases()
-locked = loadLocked()
-print("Started")
 
 def logMessage(message):
     baseLM = "user: %s ; mesg: %s ; chid: %s\n"
@@ -186,6 +165,26 @@ commands = {
         }
 
 if __name__ == "__main__":
+    #telegram bot stuff
+    url = "https://api.telegram.org/bot%s/%s"
+    token = open("token.txt").read().replace('\n', '')
+    print(url % (token, "getUpdates"))
+    path = os.path.dirname(__file__)
+
+    #globals
+    locked = []
+    aliases = {}
+    commands = {}
+    chat_id = 0
+    SCH_CHID = -1001032618176
+    LOG_CHID = -1001098108881
+
+    #requests stuff
+    ConnectionError = requests.exceptions.ConnectionError
+
+    aliases = loadAliases()
+    locked = loadLocked()
+    print("Started")
     loffset = getUpdates.offset - 1
     while getUpdates.offset != loffset:
         loffset = getUpdates.offset
