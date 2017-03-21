@@ -7,6 +7,23 @@ import time
 import random as rand
 import subprocess
 
+#telegram bot stuff
+url = "https://api.telegram.org/bot%s/%s"
+token = open("token.txt").read().replace('\n', '')
+print(url % (token, "getUpdates"))
+path = os.path.dirname(__file__)
+
+#globals
+locked = []
+aliases = {}
+commands = {}
+chat_id = 0
+SCH_CHID = -1001032618176
+LOG_CHID = -1001098108881
+
+#requests stuff
+ConnectionError = requests.exceptions.ConnectionError
+
 def isCommand(text, command):
     if text[:len(command)] != command:
         return False
@@ -165,23 +182,6 @@ commands = {
         }
 
 if __name__ == "__main__":
-    #telegram bot stuff
-    url = "https://api.telegram.org/bot%s/%s"
-    token = open("token.txt").read().replace('\n', '')
-    print(url % (token, "getUpdates"))
-    path = os.path.dirname(__file__)
-
-    #globals
-    locked = []
-    aliases = {}
-    commands = {}
-    chat_id = 0
-    SCH_CHID = -1001032618176
-    LOG_CHID = -1001098108881
-
-    #requests stuff
-    ConnectionError = requests.exceptions.ConnectionError
-
     aliases = loadAliases()
     locked = loadLocked()
     print("Started")
