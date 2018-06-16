@@ -108,11 +108,11 @@ def logMessage(message):
                 'disable_notification': True,
                 'message_id': message['message_id']
                 }
-        try:
-            tresponse = requests.post(url % (token, "forwardMessage"),
-                    data=payload, timeout=2)
-        except:
-            return
+#       try:
+#           tresponse = requests.post(url % (token, "forwardMessage"),
+#                   data=payload, timeout=2)
+#       except:
+#           return
 
 def alias(content, uid):
     alias = content.split('=')[0]
@@ -171,6 +171,20 @@ def rip(content, uid):
     response = rand.choice(["me", "rip is right", "rip is me"])
     sendMessage(response)
 
+def amirite(content, uid):
+    if rand.randint(1, 10) == 4:
+        response = "yep"
+    else:
+        response = "¬_¬"
+    sendMessage(response)
+
+def remind(content, uid):
+    global chat_id
+    chat_id = SCH_CHID
+    sendMessage("heres your periodic schedule reminder!!!\n" + aliases["schedule"])
+
+def newdaypb(content, uid):
+    sendMessage(aliases["newdaypb"])
 
 commands = {
         '/alias':    alias,
@@ -178,7 +192,10 @@ commands = {
         '/random':   random,
         '/time':     uptime,
         'w/elp':     welp,
-        '/rip':      rip
+        '/rip':      rip,
+        '/amirite':  amirite,
+        '/remindme': remind,
+        '/newdaypb': newdaypb
         }
 
 if __name__ == "__main__":
@@ -206,6 +223,7 @@ while __name__ == "__main__":
                 continue
             logMessage(message)
             message_id = message['message_id']
+            print(message_id)
             chat = message['chat']
             chat_id = chat['id']
             user = message.get('from')
