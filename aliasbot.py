@@ -35,7 +35,11 @@ def stripCommand(text, command):
 
 def getUpdates():
     try:
-        r = requests.get(url % (token, "getUpdates"), data={"offset": getUpdates.offset}, timeout=2)
+        r = requests.get(
+                url % (token, "getUpdates"),
+                data={"offset": getUpdates.offset},
+                timeout=60
+                )
         try:
             r = json.loads(r.text)
         except:
@@ -62,7 +66,11 @@ def sendMessage(message, reply_id=False, markdown=True):
     if not markdown:
         del payload['parse_mode']
     try:
-        tresponse = requests.post(url % (token, "sendMessage"), data=payload, timeout=2)
+        tresponse = requests.post(
+                url % (token, "sendMessage"),
+                data=payload,
+                timeout=2
+                )
         resp = json.loads(tresponse.text)
         if not resp["ok"]:
             return sendMessage(message, reply_id, False)
@@ -75,12 +83,12 @@ def sendMessage(message, reply_id=False, markdown=True):
 
 def loadAliases():
     aliases = {}
-    aliasFile = open(path + "/aliases.txt").read()
+    aliasFile = open(path + "/aliases.json").read()
     aliases = json.loads(aliasFile)
     return aliases
 
 def saveAliases():
-    aliasFile = open(path + "/aliases.txt", "w")
+    aliasFile = open(path + "/aliases.json", "w")
     aliasFile.write(json.dumps(aliases, indent=4))
     aliasFile.close()
 
@@ -186,16 +194,28 @@ def remind(content, uid):
 def newdaypb(content, uid):
     sendMessage(aliases["newdaypb"])
 
+def queue(content, uid):
+    print("cue")
+    if rand.randint(1, 10) < 3:
+        print("Q")
+        sendMessage("u wot m8", message_id)
+
+def stan(content, uid):
+    sendMessage('no', message_id)
+
 commands = {
-        '/alias':    alias,
-        '/unalias':  unalias,
-        '/random':   random,
-        '/time':     uptime,
-        'w/elp':     welp,
-        '/rip':      rip,
-        '/amirite':  amirite,
-        '/remindme': remind,
-        '/newdaypb': newdaypb
+        '/alias':       alias,
+        '/unalias':     unalias,
+        '/random':      random,
+        '/time':        uptime,
+        'w/elp':        welp,
+        '/rip':         rip,
+        '/amirite':     amirite,
+        '/remindme':    remind,
+        '/newdaypb':    newdaypb,
+        '/q@IshanBot':  queue,
+        'stan':         stan,
+        'hi stan':      stan
         }
 
 if __name__ == "__main__":
@@ -237,21 +257,26 @@ while __name__ == "__main__":
                             'chat_id': LOG_CHID,
                             'user_id': uid
                             }
-                    requests.post(url % (token, "kickChatMember"), data=payload, timeout=2)
+                    requests.post(
+                            url % (token, "kickChatMember"),
+                            data=payload,
+                            timeout=2
+                            )
                     continue
                 except ConnectionError:
                     pass
             text = message.get('text', ' ')
 
+            found = False
+            for command in commands.keys():
+                if isCommand(text, command):
+                    content = stripCommand(text, command)
+                    found = True
+                    commands[command](content, uid)
+            if found:
+                continue
+
             if "/" in text:
-                found = False
-                for command in commands.keys():
-                    if isCommand(text, command):
-                        content = stripCommand(text, command)
-                        found = True
-                        commands[command](content, uid)
-                if found:
-                    continue
                 terms = text.split()
                 response = ''
                 for term in terms:
@@ -261,6 +286,14 @@ while __name__ == "__main__":
                             alias = term[1:].split('@')[0]
                         else:
                             alias = term[1:]
+                        """
+                        for key in aliases.keys():
+                            if 'legendary' in aliases[key]:
+                                print(key)
+                                print([ord(c) for c in key])
+                                print([ord(c) for c in alias])
+                                print(alias == key)
+                                """
                         response += aliases.get(alias, '')
                 if response != '':
                     sendMessage(response + ' ' + name)
